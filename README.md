@@ -1,2 +1,2 @@
 # rook
-> Checkm8 exploit multipurpose GUI application for macOS.
+> Checkm8 exploit GUI application for macOS.
