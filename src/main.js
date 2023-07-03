@@ -1,4 +1,4 @@
-const gui = require('gui'),path = require('path'),fs = require('fs'),{ execFile } = require('child_process');
+const gui = require('gui'),path = require('path'),fs = require('fs'),{ execFile, spawn } = require('child_process');
 const dapi = require("../device")
 const productName = require('../package.json').build.productName
 const envPath = new String(process.env.PATH),
@@ -44,16 +44,16 @@ function getDeviceName(deviceId) {
 }
 
 function updateLogs(log, error = false) {
-  const calbk = (e) => {
+  const callbk = (e) => {
     if (e) throw e
   }
   let logFile = error?'errors.log':'logs.log';
   logFile = fs.realpathSync(path.join(__dirname, '..', 'storage', 'logs', logFile))
   fs.open(logFile, (err, fd) => {
     if (err) {
-      fs.writeFile(logFile, '', calbk)
+      fs.writeFile(logFile, '', callbk)
     } else {
-      fs.appendFile(logFile, `\n${log}\n`, calbk)
+      fs.appendFile(logFile, `\n${log}\n`, callbk)
     }
   })
 }
@@ -158,17 +158,17 @@ function onBootRamdisk() {
   const deviceDFUInfo = dapi.getInfo(),
   deviceId = `${deviceDFUInfo.product_type}_${deviceDFUInfo.hardware_model}`;
 
-  const rdsktmpDir = path.join('/tmp/', `${app.name}-rdsk_boot`),
+  const tmpDir = path.join('/tmp/', `${app.name}-rdsk_boot`),
   rdskBoot = () => {
     progressBar.setProgressValue(7)
 
     spawnScript('run_gaster.sh', false)
     setTimeout(() => {
       progressBar.setProgressValue(15)
-      dapi.sendFile(path.join(rdsktmpDir, 'ibss.img4'))
+      dapi.sendFile(path.join(tmpDir, 'ibss.img4'))
       progressBar.setProgressValue(20)
       setTimeout(() => {
-        dapi.sendFile(path.join(rdsktmpDir, 'ibec.img4'))
+        dapi.sendFile(path.join(tmpDir, 'ibec.img4'))
 
         if (strContains(deviceDFUInfo.cpid, "0x801")) {
           dapi.sendCommand("go")
@@ -179,20 +179,20 @@ function onBootRamdisk() {
           //@TODO: check if device booted iboot and reached recovery mode
           progressBar.setProgressValue(40)
           dapi.sendCommand("bootx")
-          dapi.sendFile(path.join(rdsktmpDir, 'bootlogo.img4'))
+          dapi.sendFile(path.join(tmpDir, 'bootlogo.img4'))
           dapi.sendCommand("setpicture 0")
           dapi.sendCommand("bgcolor 0 0 0")
           progressBar.setProgressValue(45)
-          dapi.sendFile(path.join(rdsktmpDir, 'dtree.img4'))
+          dapi.sendFile(path.join(tmpDir, 'dtree.img4'))
           dapi.sendCommand("devicetree")
           progressBar.setProgressValue(50)
-          dapi.sendFile(path.join(rdsktmpDir, 'ramdisk.img4'))
+          dapi.sendFile(path.join(tmpDir, 'ramdisk.img4'))
           dapi.sendCommand("ramdisk")
           progressBar.setProgressValue(75)
-          dapi.sendFile(path.join(rdsktmpDir, 'trustcache.img4'))
+          dapi.sendFile(path.join(tmpDir, 'trustcache.img4'))
           dapi.sendCommand("firmware")
           progressBar.setProgressValue(85)
-          dapi.sendFile(path.join(rdsktmpDir, 'kcache.img4'))
+          dapi.sendFile(path.join(tmpDir, 'kcache.img4'))
           progressBar.setProgressValue(95)
           dapi.sendCommand("bootx")
           setTimeout(() => {
@@ -207,9 +207,9 @@ function onBootRamdisk() {
 
   initBootRamdisk(deviceId).then((filepath) => {
     progressBar.setProgressValue(2)
-    fs.rmdir(rdsktmpDir, () => {
-      fs.mkdir(rdsktmpDir, () => {
-        execCmd('tar', ['-C', `${rdsktmpDir}`, '-xf', `${filepath}`]).then(() => {
+    fs.rmdir(tmpDir, () => {
+      fs.mkdir(tmpDir, () => {
+        execCmd('tar', ['-C', `${tmpDir}`, '-xf', `${filepath}`]).then(() => {
           rdskBoot()
         })
       })
@@ -224,11 +224,7 @@ function initBootRamdisk(deviceId) {
     return new Promise((res, rej) => {
       let realpath = null
       setTimeout(() => {
-        if (realpath === null) {
-          rej()
-        } else {
-          res(realpath)
-        }
+        if (realpath === null) { rej() } else { res(realpath) }
       }, 2000)
       fs.readdir(rdskStoragePath, (err, rdskFiles) => {
         rdskFiles.forEach((rdskFile, i) => {
@@ -383,7 +379,7 @@ class Controls {
         this.exitRecoveryButton.setStyle(STYLES.buttonDefault)
         this.container.addChildView(this.exitRecoveryButton)
 
-        // this.resetEnabled()
+        this.resetEnabled()
     }
 
     enableForRecovery() {
@@ -604,7 +600,7 @@ class Delegate {
 
     ready() {
         onFirstRunSetup().then(() => {
-          // initDeviceSearchInterval()
+          initDeviceSearchInterval()
           mainWindow.setContentView()
         })
     }
