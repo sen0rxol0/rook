@@ -291,7 +291,7 @@ function installRequiredLibraires() {
         installingMessage.setText("Please wait...")
         installingMessage.setInformativeText("Installing required libraires.")
         installingMessage.runForWindow(mainWindow.window)
-        const libsInstalledFilePath = fs.realpathSync(path.join(__dirname, '..', 'storage', 'libs_installed'))
+        const libsInstalledFilePath = fs.realpathSync(path.join(__dirname, '..', '.libs_installed'))
         fs.writeFile(libsInstalledFilePath, '', 'utf8', (err) => {
           if (err) throw err
           fs.watchFile(libsInstalledFilePath, (curr, prev) => {
