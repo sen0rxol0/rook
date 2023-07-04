@@ -330,10 +330,10 @@ function onFirstRunSetup() {
 
       if (process.execPath.indexOf(`Applications/${productName}.app/`) > 0) {
         const rootAppPath = path.resolve(process.execPath, '..'),
-        appResourcesPath = path.join(rootAppPath, 'res');
+        appResourcesPath = path.join(rootAppPath, 'res', 'resources');
 
         fs.opendir(appResourcesPath, (err, dir) => {
-          if (err === null) {
+          if (err) {
             spawnScript('setup_required.sh', true, () => {
               console.log("SETUP DONE")
               res()
