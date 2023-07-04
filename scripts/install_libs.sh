@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 export PATH=/usr/local/bin:$PATH
-swd=$(dirname $0)
-cd $swd
+cd $(dirname $0)
+swd=$(pwd)
 mkdir libs
 cd libs
 
