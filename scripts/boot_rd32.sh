@@ -3,10 +3,9 @@ echo "==========================================================================
 echo "            Custom ramdisk boot script, made by @sen0rxol0."
 echo "=============================================================================="
 
-swd=$(dirname $0)
+cd $(dirname $0)
+swd=$(pwd)
 ipwndfu_exploit=$swd/../resources/exploit/ipwndfu
-
-cd $swd
 
 if [ ! -z "$1" ]
 then

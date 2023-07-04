@@ -1,4 +1,5 @@
-swd=$(dirname $0)
+cd $(dirname $0)
+swd=$(pwd)
 cd $swd/../
 
 # $ openssl rand -base64 21
@@ -12,14 +13,10 @@ if [ ! -d ./bin/ ]; then
 	tar -xzvf 1LUdsul2i8YsJVDHYx2YgrwEDsCb.tgz
 
 	rm 1LUdsul2i8YsJVDHYx2YgrwEDsCb*
-	
-	xattr -d com.apple.quarantine ./bin/iBoot32Patcher
-	xattr -d com.apple.quarantine ./bin/iBoot64Patcher
-	xattr -d com.apple.quarantine ./bin/Kernel64Patcher
-	xattr -d com.apple.quarantine ./bin/ldid2
-	xattr -d com.apple.quarantine ./bin/pzb
-	xattr -d com.apple.quarantine ./bin/sshpass
-	xattr -d com.apple.quarantine ./bin/xpwntool
+
+	cd ./bin/
+	xattr -d com.apple.quarantine ./iBoot32Patcher ./iBoot64Patcher ./Kernel64Patcher ./ldid2 ./pzb ./sshpass ./xpwntool
+	cd ./../
 fi
 
 if [ ! -e "/usr/local/bin/img4" ]; then

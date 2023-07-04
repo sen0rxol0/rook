@@ -21,9 +21,10 @@ if [ $UID != 0 ];then
 fi
 
 sleep 1
-swd=$(dirname $0)
-swd_bin=$swd/../bin
-
+cd $(dirname $0)
+swd=$(pwd)
+cd $swd/../bin
+swd_bin=$(pwd)
 cd $swd
 
 _deviceInfo()
