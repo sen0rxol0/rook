@@ -446,7 +446,7 @@ class DeviceInfo {
     }
 
     search() {
-      execCmd('/usr/local/bin/irecovery', ['-q']).then((data) => {
+      execCmd('irecovery', ['-q']).then((data) => {
         if (!isDeviceConnected) {
           isDeviceConnected = true
           this.writeDeviceInfo(data)
@@ -523,7 +523,7 @@ class DeviceInfo {
     }
 
     getFilePath() {
-      return path.resolve(__dirname, '..', '.device_info')
+      return fs.realpathSync(path.join(__dirname, '..', 'storage', 'device_info'))
     }
 
     writeDeviceInfo(data) {
