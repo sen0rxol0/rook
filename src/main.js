@@ -1,4 +1,4 @@
-const gui = require('gui'),path = require('path'),fs = require('fs'),{ execFile, spawn } = require('child_process');
+const gui = require('gui'),path = require('path'),fs = require('fs'),{ execFile } = require('child_process');
 const dapi = require("../device")
 const productName = require('../package.json').build.productName
 const envPath = new String(process.env.PATH),
@@ -446,14 +446,12 @@ class DeviceInfo {
     }
 
     search() {
-      const irecoveryQuery = spawn('irecovery', ['-q'])
-      irecoveryQuery.stdout.on('data', (data) => {
+      execCmd('/usr/local/bin/irecovery', ['-q']).then((data) => {
         if (!isDeviceConnected) {
           isDeviceConnected = true
           this.writeDeviceInfo(data)
         }
-      })
-      irecoveryQuery.stderr.on('data', () => {
+      }).catch(() => {
         if (isDeviceConnected) {
           isDeviceConnected = false
           this.unsetData()
