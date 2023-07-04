@@ -19,6 +19,10 @@ if (!strContains(envPath, '/usr/local/bin:')) {
   process.env.PATH = `/usr/local/bin:${envPath.toString()}`
 }
 
+function appRootPath() {
+  return path.resolve(process.execPath, '..')
+}
+
 function createContainer() {
     const container = gui.Container.create()
     container.setStyle(STYLES.container)
@@ -219,7 +223,7 @@ function onBootRamdisk() {
 
 function initBootRamdisk(deviceId) {
   const rdskScriptPath = fs.realpathSync(path.join(__dirname, '..', 'scripts/custom_rd.sh')),
-  rdskStoragePath = path.resolve(__dirname, '..', 'resources/rdsk'),
+  rdskStoragePath = path.join(appRootPath(), 'res', 'resources', 'rdsk'),
   findRdskFile = () => {
     return new Promise((res, rej) => {
       let realpath = null
@@ -239,8 +243,7 @@ function initBootRamdisk(deviceId) {
   };
 
   return new Promise((res, rej) => {
-
-    const rdskWatch = fs.watch(path.resolve(__dirname, '..', 'resources/rdsk'), (ev, filename) => {
+    const rdskWatch = fs.watch(path.join(appRootPath(), 'res', 'resources', 'rdsk'), (ev, filename) => {
       if (filename.endsWith(".tar.gz")) {
         rdskWatch.close()
         setTimeout(() => {
@@ -250,11 +253,8 @@ function initBootRamdisk(deviceId) {
     })
 
     findRdskFile().then(res, () => {
-      fs.chmod(rdskScriptPath, 0o775, (err) => {
-        if (err) throw err;
-        execCmd(rdskScriptPath).then(() => {
+      spawnScript('start_custom_rd.sh', true, () => {
 
-        })
       })
     })
   })
@@ -329,8 +329,7 @@ function onFirstRunSetup() {
     installRequiredLibraires().then(() => {
 
       if (process.execPath.indexOf(`Applications/${productName}.app/`) > 0) {
-        const rootAppPath = path.resolve(process.execPath, '..'),
-        appResourcesPath = path.join(rootAppPath, 'res', 'resources');
+        const appResourcesPath = path.join(appRootPath(), 'res', 'resources');
 
         fs.opendir(appResourcesPath, (err, dir) => {
           if (err) {
@@ -454,7 +453,7 @@ class DeviceInfo {
           this.loadData()
         })
       }
-      
+
       execCmd('irecovery', ['-q']).then((stdout) => {
         if (!isDeviceConnected) {
           isDeviceConnected = true
