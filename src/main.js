@@ -339,11 +339,11 @@ function onFirstRunSetup() {
               res()
             })
           } else {
-	  res()
-	  }
+            res()
+          }
         })
       } else {
-      res()
+        res()
       }
     })
 
@@ -446,76 +446,62 @@ class DeviceInfo {
     }
 
     search() {
-      execCmd('irecovery', ['-q']).then((data) => {
+
+      const writeDeviceInfo = (data) => {
+
+        fs.writeFile(this.getFilePath(), data, 'utf8', (err) => {
+          if (err) throw err
+          this.loadData()
+        })
+      }
+      
+      execCmd('irecovery', ['-q']).then((stdout) => {
         if (!isDeviceConnected) {
           isDeviceConnected = true
-          this.writeDeviceInfo(data)
+          writeDeviceInfo(stdout)
         }
       }).catch(() => {
         if (isDeviceConnected) {
           isDeviceConnected = false
-          this.unsetData()
+          this.clearData()
           controls.resetEnabled()
         }
       })
     }
 
     loadData() {
-      if (this.tableModel.getRowCount() === 0) {
-        let deviceMode = '',
-        deviceInfoData = null,
-        deviceInfo = {};
-        const getProductType = () => {
-          const grepProductType = spawn('grep', ['PRODUCT'])
-          grepProductType.on('close', (c) => {
-            if (c === 0) this.setData(deviceInfo)
-          })
-          grepProductType.stdout.on('data', (stdout) => {
-            deviceInfo['productType'] = stdout.toString().replace(`PRODUCT: `, '').replace(/\n/g, "")
-          })
-          grepProductType.stdin.write(deviceInfoData)
-          grepProductType.stdin.end()
-        },
-        getMode = () => {
-          const grepMode = spawn('grep', ['MODE:']),
-          onGrepModeClose = (ec) => {
-            if (ec === 0) {
-              deviceInfo['mode'] = deviceMode
-              getProductType()
-            }
-          },
-          onGrepModeData = (stdoutMode) => {
-            if (strContains(stdoutMode.toString(), "DFU")) { deviceMode = "DFU"} else { deviceMode = "Recovery" }
-          };
-          grepMode.on('close', onGrepModeClose)
-          grepMode.stdout.on('data', onGrepModeData)
-          grepMode.stdin.write(deviceInfoData)
-          grepMode.stdin.end()
-        };
+      const deviceInfo = {}
 
-        this.readDeviceInfo((data) => {
-          deviceInfoData = data
-          getMode()
+      const setData = () => {
+        this.tableModel.addRow([deviceInfo.mode, `${getDeviceName(deviceInfo.productType)} (${deviceInfo.productType})`])
+        this.deviceLabel.setText(`${deviceInfo.productType} connected in ${deviceInfo.mode} Mode.`)
+
+        switch(deviceInfo.mode) {
+          case 'DFU':
+            controls.enableForDFU()
+            break
+          case 'Recovery':
+            controls.enableForRecovery()
+            break
+        }
+      }
+
+      if (this.tableModel.getRowCount() === 0) {
+        const deviceInfoFilePath = this.getFilePath();
+
+        execCmd('grep', ['MODE:', deviceInfoFilePath]).then((stdoutMode) => {
+
+          if (strContains(stdoutMode.toString(), "DFU")) { deviceInfo['mode'] = "DFU" } else { deviceInfo['mode'] = "Recovery" }
+
+          execCmd('grep', ['PRODUCT:', deviceInfoFilePath]).then((stdoutProduct) => {
+            deviceInfo['productType'] = stdoutProduct.toString().replace(`PRODUCT: `, '').replace(/\n/g, "")
+            setData()
+          })
         })
       }
     }
 
-	  setData(deviceData) {
-      const deviceName = getDeviceName(deviceData.productType)
-      this.tableModel.addRow([deviceData.mode, `${deviceName} (${deviceData.productType})`])
-      this.deviceLabel.setText(`${data.productType} connected in ${deviceData.mode} mode.`)
-
-      switch(deviceData.mode) {
-        case 'DFU':
-          controls.enableForDFU()
-          break
-        case 'Recovery':
-          controls.enableForRecovery()
-          break
-      }
-    }
-
-    unsetData() {
+    clearData() {
       if (this.tableModel.getRowCount() > 0) {
         this.tableModel.removeRowAt(0)
         this.deviceLabel.setText('Please connect device to USB.')
@@ -524,20 +510,6 @@ class DeviceInfo {
 
     getFilePath() {
       return fs.realpathSync(path.join(__dirname, '..', 'storage', 'device_info'))
-    }
-
-    writeDeviceInfo(data) {
-      fs.writeFile(this.getFilePath(), data, 'utf8', (err) => {
-        if (err) throw err
-        this.loadData()
-      })
-    }
-
-    readDeviceInfo(resolve) {
-      fs.readFile(this.getFilePath(), 'utf8', (err, data) => {
-        if (err) throw err
-        resolve(data)
-      })
     }
 }
 
