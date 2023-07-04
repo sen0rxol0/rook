@@ -338,11 +338,13 @@ function onFirstRunSetup() {
               console.log("SETUP DONE")
               res()
             })
-          }
+          } else {
+	  res()
+	  }
         })
-        return
-      }
+      } else {
       res()
+      }
     })
 
   })
