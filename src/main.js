@@ -92,11 +92,12 @@ function spawnScript(scriptFilename, terminal = true, onDone = null) {
   const scriptPath = realPath(path.join(__dirname, '..', `scripts/${scriptFilename}`))
   const onSpawnError = (err) => {
     // console.error(err)
-    showMessageBox("Error occurred!")
+    // showMessageBox("Error occurred!")
+    onDone(err)
   },
   onSpawnDone = (res) => {
     if (onDone) {
-      onDone()
+      onDone(null, res)
     }
     // console.log(res)
     // showMessageBox("Done successfully!")
@@ -150,10 +151,14 @@ function onBootRamdisk() {
     execCmd('bash', ['-c','iproxy 2222 22 > /dev/null 2>&1 &'], {shell: true}).then(() => {
       showMessageBox("SSH connect with password 'alpine':\n root@localhost -p2222", () => {
         // execCmd('sshpass /sbin/reboot')
-        execCmd('killall', ['iproxy']).then(() => {
-          progressBar.setProgressValue(0)
-          initDeviceSearchInterval()
-        })
+
+        // execCmd('killall', ['iproxy']).then(() => {
+        //   progressBar.setProgressValue(0)
+        //   initDeviceSearchInterval()
+        // })
+
+        progressBar.setProgressValue(0)
+        initDeviceSearchInterval()
       });
     })
   }
@@ -161,7 +166,7 @@ function onBootRamdisk() {
   const deviceDFUInfo = dapi.getInfo(),
   deviceId = `${deviceDFUInfo.product_type}_${deviceDFUInfo.hardware_model}`;
 
-  const tmpDir = path.join('tmp', `${app.name}-rdsk_boot`),
+  const tmpDir = path.join('/tmp/', `${productName}-rdsk_boot`),
   rdskBoot = () => {
     progressBar.setProgressValue(7)
 
@@ -222,24 +227,27 @@ function onBootRamdisk() {
 
 function initBootRamdisk(deviceId) {
   const rdskScriptPath = realPath(path.join(__dirname, '..', 'scripts', 'custom_rd.sh')),
-  rdskStoragePath = path.join(rootPath, 'res', 'resources', 'rdsk'),
-  findRdskFile = () => {
+  rdskStoragePath = path.join(rootPath, 'res', 'resources', 'rdsk');
+
+  const findRdskFile = () => {
     return new Promise((res, rej) => {
-      let realpath = null
+      let rdskFilePath = null
       setTimeout(() => {
-        if (realpath === null) { rej() } else { res(realpath) }
-      }, 2000)
+        if (rdskFilePath === null) { rej() } else { res(rdskFilePath) }
+      }, 5000)
       fs.readdir(rdskStoragePath, (err, rdskFiles) => {
         rdskFiles.forEach((rdskFile, i) => {
           if (strContains(rdskFile, deviceId)) {
-            fs.realpath(`${rdskStoragePath}/${rdskFile}`, (err, path) => {
-              realpath = path
-            })
+            rdskFilePath = realPath(path.join(rdskStoragePath, rdskFile))
+
+            // fs.realpath(`${rdskStoragePath}/${rdskFile}`, (err, path) => {
+            //   realpath = path
+            // })
           }
         })
       })
     })
-  };
+  }
 
   return new Promise((res, rej) => {
     const rdskWatch = fs.watch(path.join(rootPath, 'res', 'resources', 'rdsk'), (ev, filename) => {
@@ -252,9 +260,7 @@ function initBootRamdisk(deviceId) {
     })
 
     findRdskFile().then(res, () => {
-      spawnScript('start_custom_rd.sh', true, () => {
-
-      })
+      spawnScript('start_custom_rd.sh', true)
     })
   })
 }
