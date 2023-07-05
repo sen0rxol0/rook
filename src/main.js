@@ -19,9 +19,8 @@ if (!strContains(envPath, '/usr/local/bin:')) {
   process.env.PATH = `/usr/local/bin:${envPath.toString()}`
 }
 
-function appRootPath() {
-  return path.resolve(process.execPath, '..')
-}
+const rootPath = path.resolve(process.execPath, '..')
+const realPath = p => fs.realpathSync(p)
 
 function createContainer() {
     const container = gui.Container.create()
@@ -52,7 +51,7 @@ function updateLogs(log, error = false) {
     if (e) throw e
   }
   let logFile = error?'errors.log':'logs.log';
-  logFile = fs.realpathSync(path.join(__dirname, '..', 'storage', 'logs', logFile))
+  logFile = realPath(path.join(__dirname, '..', 'storage', 'logs', logFile))
   fs.open(logFile, (err, fd) => {
     if (err) {
       fs.writeFile(logFile, '', callbk)
@@ -90,7 +89,7 @@ function execCmd(file = '', args = [], opt = {}) {
 }
 
 function spawnScript(scriptFilename, terminal = true, onDone = null) {
-  const scriptPath = fs.realpathSync(path.join(__dirname, '..', `scripts/${scriptFilename}`))
+  const scriptPath = realPath(path.join(__dirname, '..', `scripts/${scriptFilename}`))
   const onSpawnError = (err) => {
     // console.error(err)
     showMessageBox("Error occurred!")
@@ -162,7 +161,7 @@ function onBootRamdisk() {
   const deviceDFUInfo = dapi.getInfo(),
   deviceId = `${deviceDFUInfo.product_type}_${deviceDFUInfo.hardware_model}`;
 
-  const tmpDir = path.join('/tmp/', `${app.name}-rdsk_boot`),
+  const tmpDir = path.join('tmp', `${app.name}-rdsk_boot`),
   rdskBoot = () => {
     progressBar.setProgressValue(7)
 
@@ -222,8 +221,8 @@ function onBootRamdisk() {
 }
 
 function initBootRamdisk(deviceId) {
-  const rdskScriptPath = fs.realpathSync(path.join(__dirname, '..', 'scripts/custom_rd.sh')),
-  rdskStoragePath = path.join(appRootPath(), 'res', 'resources', 'rdsk'),
+  const rdskScriptPath = realPath(path.join(__dirname, '..', 'scripts', 'custom_rd.sh')),
+  rdskStoragePath = path.join(rootPath, 'res', 'resources', 'rdsk'),
   findRdskFile = () => {
     return new Promise((res, rej) => {
       let realpath = null
@@ -243,7 +242,7 @@ function initBootRamdisk(deviceId) {
   };
 
   return new Promise((res, rej) => {
-    const rdskWatch = fs.watch(path.join(appRootPath(), 'res', 'resources', 'rdsk'), (ev, filename) => {
+    const rdskWatch = fs.watch(path.join(rootPath, 'res', 'resources', 'rdsk'), (ev, filename) => {
       if (filename.endsWith(".tar.gz")) {
         rdskWatch.close()
         setTimeout(() => {
@@ -291,7 +290,7 @@ function installRequiredLibraires() {
         installingMessage.setText("Please wait...")
         installingMessage.setInformativeText("Installing required libraires.")
         installingMessage.runForWindow(mainWindow.window)
-        const libsInstalledFilePath = fs.realpathSync(path.join(__dirname, '..', '.libs_installed'))
+        const libsInstalledFilePath = realPath(path.join(__dirname, '..', '.libs_installed'))
         fs.writeFile(libsInstalledFilePath, '', 'utf8', (err) => {
           if (err) throw err
           fs.watchFile(libsInstalledFilePath, (curr, prev) => {
@@ -329,7 +328,7 @@ function onFirstRunSetup() {
     installRequiredLibraires().then(() => {
 
       if (process.execPath.indexOf(`Applications/${productName}.app/`) > 0) {
-        const appResourcesPath = path.join(appRootPath(), 'res', 'resources');
+        const appResourcesPath = path.join(rootPath, 'res', 'resources');
 
         fs.opendir(appResourcesPath, (err, dir) => {
           if (err) {
@@ -446,18 +445,10 @@ class DeviceInfo {
 
     search() {
 
-      const writeDeviceInfo = (data) => {
-
-        fs.writeFile(this.getFilePath(), data, 'utf8', (err) => {
-          if (err) throw err
-          this.loadData()
-        })
-      }
-
       execCmd('irecovery', ['-q']).then((stdout) => {
         if (!isDeviceConnected) {
           isDeviceConnected = true
-          writeDeviceInfo(stdout)
+          this.loadData(stdout)
         }
       }).catch(() => {
         if (isDeviceConnected) {
@@ -468,10 +459,10 @@ class DeviceInfo {
       })
     }
 
-    loadData() {
-      const deviceInfo = {}
+    loadData(deviceInfoData) {
 
-      const setData = () => {
+      const deviceInfo = {},
+      setData = () => {
         this.tableModel.addRow([deviceInfo.mode, `${getDeviceName(deviceInfo.productType)} (${deviceInfo.productType})`])
         this.deviceLabel.setText(`${deviceInfo.productType} connected in ${deviceInfo.mode} Mode.`)
 
@@ -483,21 +474,27 @@ class DeviceInfo {
             controls.enableForRecovery()
             break
         }
-      }
+      },
+      onDataLoad = () => {
+        if (this.tableModel.getRowCount() === 0) {
+          const deviceInfoFilePath = this.getFilePath();
 
-      if (this.tableModel.getRowCount() === 0) {
-        const deviceInfoFilePath = this.getFilePath();
+          execCmd('grep', ['MODE:', deviceInfoFilePath]).then((stdoutMode) => {
 
-        execCmd('grep', ['MODE:', deviceInfoFilePath]).then((stdoutMode) => {
+            if (strContains(stdoutMode.toString(), "DFU")) { deviceInfo['mode'] = "DFU" } else { deviceInfo['mode'] = "Recovery" }
 
-          if (strContains(stdoutMode.toString(), "DFU")) { deviceInfo['mode'] = "DFU" } else { deviceInfo['mode'] = "Recovery" }
-
-          execCmd('grep', ['PRODUCT:', deviceInfoFilePath]).then((stdoutProduct) => {
-            deviceInfo['productType'] = stdoutProduct.toString().replace(`PRODUCT: `, '').replace(/\n/g, "")
-            setData()
+            execCmd('grep', ['PRODUCT:', deviceInfoFilePath]).then((stdoutProduct) => {
+              deviceInfo['productType'] = stdoutProduct.toString().replace(`PRODUCT: `, '').replace(/\n/g, "")
+              setData()
+            })
           })
-        })
-      }
+        }
+      };
+
+      fs.writeFile(this.getFilePath(), deviceInfoData, 'utf8', (err) => {
+        if (err) throw err
+        onDataLoad()
+      })
     }
 
     clearData() {
@@ -508,7 +505,7 @@ class DeviceInfo {
     }
 
     getFilePath() {
-      return fs.realpathSync(path.join(__dirname, '..', 'storage', 'device_info'))
+      return realPath(path.join(__dirname, '..', 'storage', 'device_info'))
     }
 }
 
