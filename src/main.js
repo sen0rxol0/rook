@@ -217,7 +217,7 @@ function onBootRamdisk() {
     progressBar.setProgressValue(2)
     fs.rmdir(tmpDir, () => {
       fs.mkdir(tmpDir, () => {
-        execCmd('tar', ['-C', `${tmpDir}`, '-xf', `${filepath}`]).then(() => {
+        execCmd('tar', ['-C', tmpDir, '-xf', filepath]).then(() => {
           rdskBoot()
         })
       })
@@ -352,6 +352,15 @@ function onFirstRunSetup() {
     })
 
   })
+}
+
+
+function onQuit() {
+  mainWindow.window.close()
+  gui.MessageLoop.quit()
+
+// Ignore pending Node.js works.
+  process.exit(0)
 }
 
 class Controls {
@@ -522,7 +531,7 @@ class MainWindow {
     this.window.setContentSize({width: 340,height: 520})
     this.window.setMaximizable(false)
     this.window.setMinimizable(false)
-    this.window.onClose = () => gui.MessageLoop.quit()
+    this.window.onClose = onQuit
     this.window.center()
     this.window.activate()
   }
@@ -566,13 +575,27 @@ class Delegate {
     constructor() {
       if (process.platform === 'darwin') {
       }
+
+      gui.app.setApplicationMenu(gui.MenuBar.create([
+        {
+          label: productName,
+          submenu: [
+            {
+              label: 'Quit',
+              accelerator: 'CmdOrCtrl+Q',
+              onClick: onQuit
+            }
+          ]
+        }
+      ]))
+
       global.controls = new Controls()
       global.deviceInfo = new DeviceInfo()
       global.progressBar = new ProgressBar()
       global.mainWindow = new MainWindow()
     }
 
-    ready() {
+    main() {
         onFirstRunSetup().then(() => {
           initDeviceSearchInterval()
           mainWindow.setContentView()
@@ -581,7 +604,7 @@ class Delegate {
 }
 
 global.ka = [] // KEEP ALIVE
-global.supportedHarwareModels = ['d101ap']
+global.supportedHardwareModels = ['d101ap']
 global.isDeviceConnected = false
 global.SHSHFilePath = ''
 global.deviceList = {
@@ -620,4 +643,4 @@ global.deviceList = {
   }
 }
 global.app = new Delegate()
-app.ready()
+app.main()
