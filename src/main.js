@@ -274,7 +274,7 @@ function onPwnDevice() {
   exploitMessage.setDefaultResponse(0)
   const pwnDevice = (res) => {
     if (res === 1) {
-      // spawnScript('run_ipwndfu.sh')
+      spawnScript('run_ipwndfu.sh')
     } else if (res === 2) {
       spawnScript('run_gaster.sh')
     }
