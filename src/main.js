@@ -356,9 +356,7 @@ function onFirstRunSetup() {
 
 
 function onQuit() {
-  mainWindow.window.close()
   gui.MessageLoop.quit()
-
 // Ignore pending Node.js works.
   process.exit(0)
 }
