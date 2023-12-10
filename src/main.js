@@ -1,7 +1,7 @@
 const gui = require('gui'),path = require('path'),fs = require('fs'),{ execFile } = require('child_process');
 const dapi = require("../device")
 const productName = require('../package.json').build.productName
-
+const headingAttributedText = gui.AttributedText.create(`Welcome to ${productName}`, { font: gui.Font.default().derive(0, 'bold', 'normal'), align: 'center', valign: 'center' });
 const DEVICE_SEARCHING_INTERVAL = 3000,
 WINDOW_WIDTH = 480,
 WINDOW_HEIGHT = 640,
@@ -12,6 +12,7 @@ COLORS = (() => {
   }
   return {background:gui.Color.rgb(232, 232, 232),backgroundDarker:gui.Color.rgb(154, 154, 154),text:gui.Color.rgb(0, 0, 0)}
 })();
+
 
 const envPath = new String(process.env.PATH),
 strContains = (str, c) => (str.indexOf(c) !== -1);
@@ -90,7 +91,7 @@ function execCmd(file = '', args = [], opt = {}) {
 }
 
 function spawnScript(scriptFilename, terminal = true, onDone = null) {
-  const scriptPath = realPath(path.join(__dirname, '..', `scripts/${scriptFilename}`))
+  const scriptPath = realPath(path.join(__dirname, '..', 'scripts', scriptFilename))
   const onSpawnError = (err) => {
     // showMessageBox("Error occurred!")
     onDone(err)
@@ -147,7 +148,8 @@ function onBootRamdisk() {
 
   const rdskBootDone = () => {
     progressBar.setProgressValue(0, true)
-    execCmd('bash', ['-c','iproxy 2222 22 > /dev/null 2>&1 &'], {shell: true}).then(() => {
+    // execCmd('bash', ['-c','iproxy 2222 22 > /dev/null 2>&1 &'], {shell: true}).then(() => {
+    execCmd('bash', ['-c','iproxy 2222 22 > /dev/null 2>&1 &']).then(() => {
       showMessageBox("SSH connect with password 'alpine':\n root@localhost -p2222", () => {
         // execCmd('sshpass /sbin/reboot')
         // execCmd('killall', ['iproxy']).then(() => {})
@@ -287,7 +289,7 @@ function installRequiredLibraires() {
         installingMessage.setText("Please wait...")
         installingMessage.setInformativeText("Installing required libraires.")
         installingMessage.runForWindow(mainWindow.window)
-        const libsInstalledFilePath = realPath(path.join(__dirname, '..', '.libs_installed'))
+        const libsInstalledFilePath = realPath(path.join(rootPath(), '.libs_installed'))
         fs.writeFile(libsInstalledFilePath, '', 'utf8', (err) => {
           if (err) throw err
           fs.watchFile(libsInstalledFilePath, (curr, prev) => {
@@ -524,12 +526,12 @@ class MainWindow {
   }
 
   setContentView() {
-    this.container = createContainer()
-    this.container.setStyle({ width: '100%' })
     const heading = gui.Container.create(),
-    headingLabel = gui.Label.createWithAttributedText(gui.AttributedText.create(`Welcome to ${productName}`, { font: gui.Font.default().derive(0, 'bold', 'normal'), align: 'center', valign: 'center' }));
+    headingLabel = gui.Label.createWithAttributedText(headingAttributedText);
     headingLabel.setStyle({ height: '56px' })
     heading.addChildView(headingLabel)
+    this.container = createContainer()
+    this.container.setStyle({ width: '100%' })
     this.container.addChildView(heading)
    	this.container.addChildView(controls.container)
 
@@ -560,8 +562,7 @@ class MainWindow {
 class Delegate {
 
     constructor() {
-      if (process.platform === 'darwin') {
-      }
+      // if (process.platform === 'darwin') {}
 
       gui.app.setApplicationMenu(gui.MenuBar.create([
         {
