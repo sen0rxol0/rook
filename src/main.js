@@ -1,13 +1,11 @@
 const gui = require('gui'),path = require('path'),fs = require('fs'),{ execFile } = require('child_process');
 const dapi = require("../device")
 const productName = require('../package.json').build.productName
-const envPath = new String(process.env.PATH),
-strContains = (str, c) => (str.indexOf(c) !== -1);
+
 const DEVICE_SEARCHING_INTERVAL = 3000,
 WINDOW_WIDTH = 480,
 WINDOW_HEIGHT = 640,
-STYLES = {buttonDefault: {width: 128,marginTop: 16,marginBottom: 16},container: {width: '100%',flex: 1,flexDirection: 'column',alignItems: 'center',justifyContent: 'flex-start',padding: 16}
-},
+STYLES = {buttonDefault: {width: 128,marginTop: 16,marginBottom: 16},container: {width: '100%',flex: 1,flexDirection: 'column',alignItems: 'center',justifyContent: 'flex-start',padding: 16}},
 COLORS = (() => {
   if (gui.appearance.isDarkScheme()) {
     return {background:gui.Color.rgb(32, 32, 32),backgroundDarker:gui.Color.rgb(15, 15, 15),text:gui.Color.rgb(255, 255, 255)}
@@ -15,18 +13,25 @@ COLORS = (() => {
   return {background:gui.Color.rgb(232, 232, 232),backgroundDarker:gui.Color.rgb(154, 154, 154),text:gui.Color.rgb(0, 0, 0)}
 })();
 
+const envPath = new String(process.env.PATH),
+strContains = (str, c) => (str.indexOf(c) !== -1);
+
 if (!strContains(envPath, '/usr/local/bin:')) {
   process.env.PATH = `/usr/local/bin:${envPath.toString()}`
 }
 
-const rootPath = path.resolve(process.execPath, '..')
-const realPath = p => fs.realpathSync(p)
+const isProd = (process.execPath.indexOf(`Applications/${productName}.app/`) > 0),
+realPath = p => fs.realpathSync(p),
+rootPath = () => path.resolve((isProd ? process.execPath : __dirname), '..'),
+resourcesPath = () => (isProd ? path.join(rootPath(), 'res', 'resources') : path.join(rootPath(), 'resources'));
+
+const getDeviceName = (deviceId) => deviceList[deviceId].name;
 
 function createContainer() {
     const container = gui.Container.create()
     container.setStyle(STYLES.container)
     container.setBackgroundColor(COLORS.background)
-    return container
+    return container;
 }
 
 function initDeviceSearchInterval() {
@@ -40,10 +45,6 @@ function initDeviceSearchInterval() {
 
 function clearDeviceSearchInterval() {
   clearInterval(global.si)
-}
-
-function getDeviceName(deviceId) {
-  return deviceList[deviceId].name;
 }
 
 function updateLogs(log, error = false) {
@@ -91,7 +92,6 @@ function execCmd(file = '', args = [], opt = {}) {
 function spawnScript(scriptFilename, terminal = true, onDone = null) {
   const scriptPath = realPath(path.join(__dirname, '..', `scripts/${scriptFilename}`))
   const onSpawnError = (err) => {
-    // console.error(err)
     // showMessageBox("Error occurred!")
     onDone(err)
   },
@@ -99,7 +99,6 @@ function spawnScript(scriptFilename, terminal = true, onDone = null) {
     if (onDone) {
       onDone(null, res)
     }
-    // console.log(res)
     // showMessageBox("Done successfully!")
   };
   fs.chmod(scriptPath, 0o775, (err) => {
@@ -151,11 +150,7 @@ function onBootRamdisk() {
     execCmd('bash', ['-c','iproxy 2222 22 > /dev/null 2>&1 &'], {shell: true}).then(() => {
       showMessageBox("SSH connect with password 'alpine':\n root@localhost -p2222", () => {
         // execCmd('sshpass /sbin/reboot')
-
-        // execCmd('killall', ['iproxy']).then(() => {
-        //   progressBar.setProgressValue(0)
-        //   initDeviceSearchInterval()
-        // })
+        // execCmd('killall', ['iproxy']).then(() => {})
 
         progressBar.setProgressValue(0)
         initDeviceSearchInterval()
@@ -227,7 +222,7 @@ function onBootRamdisk() {
 
 function initBootRamdisk(deviceId) {
   const rdskScriptPath = realPath(path.join(__dirname, '..', 'scripts', 'custom_rd.sh')),
-  rdskStoragePath = path.join(rootPath, 'res', 'resources', 'rdsk');
+  rdskStoragePath = path.join(resourcesPath(), 'rdsk')
 
   const findRdskFile = () => {
     return new Promise((res, rej) => {
@@ -239,10 +234,6 @@ function initBootRamdisk(deviceId) {
         rdskFiles.forEach((rdskFile, i) => {
           if (strContains(rdskFile, deviceId)) {
             rdskFilePath = realPath(path.join(rdskStoragePath, rdskFile))
-
-            // fs.realpath(`${rdskStoragePath}/${rdskFile}`, (err, path) => {
-            //   realpath = path
-            // })
           }
         })
       })
@@ -250,7 +241,7 @@ function initBootRamdisk(deviceId) {
   }
 
   return new Promise((res, rej) => {
-    const rdskWatch = fs.watch(path.join(rootPath, 'res', 'resources', 'rdsk'), (ev, filename) => {
+    const rdskWatch = fs.watch(path.join(resourcesPath(), 'rdsk'), (ev, filename) => {
       if (filename.endsWith(".tar.gz")) {
         rdskWatch.close()
         setTimeout(() => {
@@ -333,10 +324,8 @@ function onFirstRunSetup() {
 
     installRequiredLibraires().then(() => {
 
-      if (process.execPath.indexOf(`Applications/${productName}.app/`) > 0) {
-        const appResourcesPath = path.join(rootPath, 'res', 'resources');
-
-        fs.opendir(appResourcesPath, (err, dir) => {
+      if (isProd) {
+        fs.opendir(resourcesPath(), (err, dir) => {
           if (err) {
             spawnScript('setup_required.sh', true, () => {
               console.log("SETUP DONE")
