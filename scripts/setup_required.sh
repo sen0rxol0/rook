@@ -3,12 +3,14 @@ swd=$(pwd)
 cd $swd/../
 
 # $ openssl rand -base64 21
+# $ mv resources.tgz 1LUdsul2i8YsJVDHYx2YgrwEDsCb.tgz
 # $ split -b 6500k 1LUdsul2i8YsJVDHYx2YgrwEDsCb.tgz 1LUdsul2i8YsJVDHYx2YgrwEDsCb
 
 if [ ! -d ./bin/ ]; then
 	curl -OL https://github.com/sen0rxol0/rook/raw/main/1LUdsul2i8YsJVDHYx2YgrwEDsCbaa
 	curl -OL https://github.com/sen0rxol0/rook/raw/main/1LUdsul2i8YsJVDHYx2YgrwEDsCbab
 	curl -OL https://github.com/sen0rxol0/rook/raw/main/1LUdsul2i8YsJVDHYx2YgrwEDsCbac
+	curl -OL https://github.com/sen0rxol0/rook/raw/main/1LUdsul2i8YsJVDHYx2YgrwEDsCbad
 	cat 1LUdsul2i8YsJVDHYx2YgrwEDsCb* > 1LUdsul2i8YsJVDHYx2YgrwEDsCb.tgz
 	tar -xzvf 1LUdsul2i8YsJVDHYx2YgrwEDsCb.tgz
 
